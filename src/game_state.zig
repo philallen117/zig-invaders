@@ -104,18 +104,7 @@ pub fn process_player_bullet_shield_collisions(state: *GameState) void {
     }
 }
 
-pub fn update_game_state(state: *GameState, player_goes_left: bool, player_goes_right: bool, player_shoots: bool) void {
-    state.player.move(player_goes_left, player_goes_right);
-    if (player_shoots) {
-        fire_player_bullet(state);
-    }
-    for (&state.player_bullets) |*b| {
-        b.move();
-    }
-    // Find collisions between player bullets and invaders before invaders move or shoot.
-    // Do shields too.
-    process_player_bullet_invader_collisions(state);
-    process_player_bullet_shield_collisions(state);
+pub fn process_invader_movement(state: *GameState) void {
     state.invader_move_timer += 1;
     if (state.invader_move_timer == Invader.moveDelay) {
         state.invader_move_timer = 0;
@@ -152,6 +141,21 @@ pub fn update_game_state(state: *GameState, player_goes_left: bool, player_goes_
             }
         }
     }
+}
+
+pub fn update_game_state(state: *GameState, player_goes_left: bool, player_goes_right: bool, player_shoots: bool) void {
+    state.player.move(player_goes_left, player_goes_right);
+    if (player_shoots) {
+        fire_player_bullet(state);
+    }
+    for (&state.player_bullets) |*b| {
+        b.move();
+    }
+    // Find collisions between player bullets and invaders before invaders move or shoot.
+    // Do shields too.
+    process_player_bullet_invader_collisions(state);
+    process_player_bullet_shield_collisions(state);
+    process_invader_movement(state);
     // Invaders shooting before invader bullets update
     state.invader_shoot_timer += 1;
     if (state.invader_shoot_timer == Invader.shootDelay) {

@@ -25,3 +25,16 @@ The expected behaviours for player bullet - shield collisions are:
 - Bullet becomes inactive.
 - Shield health reduces by 1.
 - As soon as shield health reaches 0, it no longer collides with player bullets.
+
+--- commit
+
+Now add tests for invader movement.
+
+- Invaders (that are still alive) move collectively. E.g. distances between them are preserved.
+- Invaders do not move every frame, but move after Invader.moveDelay frames.
+- Invaders initially move right (invader_direction = +1) until one of them that is still alive reaches the right edge. At this point, they all drop (dropDistance) and invader_direction toggles to -1.
+- In this state, invaders now move left and perform the analogous behaviour.
+
+--- commit
+
+Now add test for invader bullets.

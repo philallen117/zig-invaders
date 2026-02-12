@@ -388,3 +388,209 @@ test "process_player_bullet_shield_collisions - bullet hits at most one shield" 
     };
     try testing.expectEqual(@as(u32, 1), damaged_count);
 }
+
+test "process_invader_movement - does not move until moveDelay frames" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    const initial_x = state.invaders[0][0].shape.left_x;
+    const initial_y = state.invaders[0][0].shape.top_y;
+
+    // Call process_invader_movement for moveDelay - 1 frames
+    var i: i32 = 0;
+    while (i < Invader.moveDelay - 1) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Invaders should not have moved yet
+    try testing.expectEqual(initial_x, state.invaders[0][0].shape.left_x);
+    try testing.expectEqual(initial_y, state.invaders[0][0].shape.top_y);
+}
+
+test "process_invader_movement - moves after exactly moveDelay frames" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    const initial_x = state.invaders[0][0].shape.left_x;
+
+    // Call process_invader_movement for exactly moveDelay frames
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Invaders should have moved right (direction = 1)
+    try testing.expectEqual(initial_x + Invader.speed, state.invaders[0][0].shape.left_x);
+}
+
+test "process_invader_movement - timer increments each frame" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    try testing.expectEqual(@as(i32, 0), state.invader_move_timer);
+
+    game_state.process_invader_movement(&state);
+    try testing.expectEqual(@as(i32, 1), state.invader_move_timer);
+
+    game_state.process_invader_movement(&state);
+    try testing.expectEqual(@as(i32, 2), state.invader_move_timer);
+}
+
+test "process_invader_movement - timer resets after movement" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Move to just before moveDelay
+    var i: i32 = 0;
+    while (i < Invader.moveDelay - 1) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    try testing.expectEqual(Invader.moveDelay - 1, state.invader_move_timer);
+
+    // One more call should trigger movement and reset timer
+    game_state.process_invader_movement(&state);
+    try testing.expectEqual(@as(i32, 0), state.invader_move_timer);
+}
+
+test "process_invader_movement - invaders move collectively preserving distances" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Record initial positions and distances
+    const inv_0_0_x = state.invaders[0][0].shape.left_x;
+    const inv_0_1_x = state.invaders[0][1].shape.left_x;
+    const inv_1_0_y = state.invaders[1][0].shape.top_y;
+    const inv_0_0_y = state.invaders[0][0].shape.top_y;
+
+    const initial_horizontal_distance = inv_0_1_x - inv_0_0_x;
+    const initial_vertical_distance = inv_1_0_y - inv_0_0_y;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Check distances are preserved
+    const new_horizontal_distance = state.invaders[0][1].shape.left_x - state.invaders[0][0].shape.left_x;
+    const new_vertical_distance = state.invaders[1][0].shape.top_y - state.invaders[0][0].shape.top_y;
+
+    try testing.expectEqual(initial_horizontal_distance, new_horizontal_distance);
+    try testing.expectEqual(initial_vertical_distance, new_vertical_distance);
+}
+
+test "process_invader_movement - initial direction is right" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    try testing.expectEqual(@as(i32, 1), state.invader_direction);
+
+    const initial_x = state.invaders[0][0].shape.left_x;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Should move right (positive x)
+    try testing.expect(state.invaders[0][0].shape.left_x > initial_x);
+}
+
+test "process_invader_movement - toggles direction at right edge" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Position invader near right edge
+    state.invaders[0][0].shape.left_x = constants.screenWidth - InvaderShape.width - 2;
+    state.invader_direction = 1;
+
+    const initial_y = state.invaders[0][0].shape.top_y;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Direction should have toggled
+    try testing.expectEqual(@as(i32, -1), state.invader_direction);
+    // Should have dropped
+    try testing.expectEqual(initial_y + Invader.dropDistance, state.invaders[0][0].shape.top_y);
+}
+
+test "process_invader_movement - toggles direction at left edge" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Position invader near left edge, moving left
+    state.invaders[0][0].shape.left_x = 2;
+    state.invader_direction = -1;
+
+    const initial_y = state.invaders[0][0].shape.top_y;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Direction should have toggled back
+    try testing.expectEqual(@as(i32, 1), state.invader_direction);
+    // Should have dropped
+    try testing.expectEqual(initial_y + Invader.dropDistance, state.invaders[0][0].shape.top_y);
+}
+
+test "process_invader_movement - all invaders drop when one hits edge" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Position only first invader near edge
+    state.invaders[0][0].shape.left_x = constants.screenWidth - InvaderShape.width - 2;
+    state.invader_direction = 1;
+
+    const initial_y_00 = state.invaders[0][0].shape.top_y;
+    const initial_y_11 = state.invaders[1][1].shape.top_y;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // All invaders should have dropped
+    try testing.expectEqual(initial_y_00 + Invader.dropDistance, state.invaders[0][0].shape.top_y);
+    try testing.expectEqual(initial_y_11 + Invader.dropDistance, state.invaders[1][1].shape.top_y);
+}
+
+test "process_invader_movement - dead invaders do not affect edge detection" {
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
+
+    // Kill all invaders except one in the middle
+    for (&state.invaders) |*row| {
+        for (row) |*invader| {
+            invader.alive = false;
+        }
+    }
+    state.invaders[2][5].alive = true;
+
+    // Position the alive invader far from edges
+    state.invaders[2][5].shape.left_x = constants.screenWidth / 2;
+    state.invader_direction = 1;
+
+    const initial_y = state.invaders[2][5].shape.top_y;
+    const initial_x = state.invaders[2][5].shape.left_x;
+
+    // Trigger movement
+    var i: i32 = 0;
+    while (i < Invader.moveDelay) : (i += 1) {
+        game_state.process_invader_movement(&state);
+    }
+
+    // Should have moved right, not dropped
+    try testing.expectEqual(initial_x + Invader.speed, state.invaders[2][5].shape.left_x);
+    try testing.expectEqual(initial_y, state.invaders[2][5].shape.top_y);
+    try testing.expectEqual(@as(i32, 1), state.invader_direction);
+}
