@@ -1,0 +1,1 @@
+In the code so far, only the `Player` can fire Bullets. Later, I will expand the game so that the Invaders can also fire their own bullets. But to prepare for that, I want to refactor the code to rename the existing Bullets to PlayerBullets. Please rename variables accordingly, but leave the constants as they are because I will reuse them.
