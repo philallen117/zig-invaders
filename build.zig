@@ -1,10 +1,13 @@
 const std = @import("std");
 
-// Shared module definitions accessed by helper function
+// Shared module definitions.
 var shapes_module: *std.Build.Module = undefined;
 var constants_module: *std.Build.Module = undefined;
+var player_module: *std.Build.Module = undefined;
+var invader_module: *std.Build.Module = undefined;
+var shield_module: *std.Build.Module = undefined;
 
-// Helper function to create test modules with standard game dependencies
+// Helper function to create test modules for game objects.
 fn addGameTest(
     b: *std.Build,
     test_file: []const u8,
@@ -64,7 +67,6 @@ pub fn build(b: *std.Build) void {
     const raylib = raylib_dep.module("raylib");
     const raylib_artifact = raylib_dep.artifact("raylib");
 
-    // Create reusable modules for common dependencies
     shapes_module = b.createModule(.{
         .root_source_file = b.path("src/shapes.zig"),
         .target = target,
@@ -78,6 +80,38 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/constants.zig"),
         .target = target,
         .optimize = optimize,
+    });
+
+    player_module = b.createModule(.{
+        .root_source_file = b.path("src/player.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib },
+            .{ .name = "shapes.zig", .module = shapes_module },
+            .{ .name = "constants.zig", .module = constants_module },
+        },
+    });
+
+    invader_module = b.createModule(.{
+        .root_source_file = b.path("src/invader.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib },
+            .{ .name = "shapes.zig", .module = shapes_module },
+            .{ .name = "constants.zig", .module = constants_module },
+        },
+    });
+
+    shield_module = b.createModule(.{
+        .root_source_file = b.path("src/shield.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib },
+            .{ .name = "shapes.zig", .module = shapes_module },
+        },
     });
 
     // Here we define an executable. An executable needs to have a root module
@@ -193,6 +227,33 @@ pub fn build(b: *std.Build) void {
     const shield_tests = addGameTest(b, "test/shield_test.zig", "src/shield.zig", "shield", target, optimize, raylib);
     const run_shield_tests = b.addRunArtifact(shield_tests);
     test_step.dependOn(&run_shield_tests.step);
+
+    // game_state tests require additional module dependencies
+    const game_state_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("test/game_state_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "game_state", .module = b.createModule(.{
+                    .root_source_file = b.path("src/game_state.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .imports = &.{
+                        .{ .name = "raylib", .module = raylib },
+                        .{ .name = "constants.zig", .module = constants_module },
+                        .{ .name = "shapes.zig", .module = shapes_module },
+                        .{ .name = "player.zig", .module = player_module },
+                        .{ .name = "invader.zig", .module = invader_module },
+                        .{ .name = "shield.zig", .module = shield_module },
+                    },
+                }) },
+                .{ .name = "constants", .module = constants_module },
+            },
+        }),
+    });
+    const run_game_state_tests = b.addRunArtifact(game_state_tests);
+    test_step.dependOn(&run_game_state_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
