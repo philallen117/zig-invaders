@@ -7,24 +7,25 @@ pub fn main() void {
     defer rl.closeWindow();
     rl.setTargetFPS(60);
 
-    game_state.init_game_state();
+    var state: game_state.GameState = undefined;
+    game_state.init_game_state(&state);
     game_loop: while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.black);
 
-        if (game_state.game_won) {
-            game_state.draw_game_stopped("You won!");
+        if (state.game_won) {
+            game_state.draw_game_stopped(&state, "You won!");
             if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                game_state.game_won = false;
-                game_state.init_game_state();
+                state.game_won = false;
+                game_state.init_game_state(&state);
                 continue :game_loop;
             }
-        } else if (game_state.game_over) {
-            game_state.draw_game_stopped("You lost.");
+        } else if (state.game_over) {
+            game_state.draw_game_stopped(&state, "You lost.");
             if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                game_state.game_over = false;
-                game_state.init_game_state();
+                state.game_over = false;
+                game_state.init_game_state(&state);
                 continue :game_loop;
             }
         } else {
@@ -32,8 +33,8 @@ pub fn main() void {
             const player_goes_left = rl.isKeyDown(rl.KeyboardKey.left);
             const player_shoots = rl.isKeyPressed(rl.KeyboardKey.space);
             // I am not making the randomness side effect for invader shooting explicit here :-(
-            game_state.update_game_state(player_goes_left, player_goes_right, player_shoots);
-            game_state.draw_game_state();
+            game_state.update_game_state(&state, player_goes_left, player_goes_right, player_shoots);
+            game_state.draw_game_state(&state);
         }
     }
 }

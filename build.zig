@@ -249,6 +249,9 @@ pub fn build(b: *std.Build) void {
                     },
                 }) },
                 .{ .name = "constants", .module = constants_module },
+                .{ .name = "player", .module = player_module },
+                .{ .name = "invader", .module = invader_module },
+                .{ .name = "shield", .module = shield_module },
             },
         }),
     });

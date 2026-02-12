@@ -18,3 +18,4 @@ pub const shieldStartCount = 4;
 pub const shieldStartX = 150;
 pub const shieldSpacingX = 150;
 pub const shieldStartY = 450;
+pub const invaderKillScore = 10;
