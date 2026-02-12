@@ -151,14 +151,21 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
+    // A top level step for running all tests. dependOn can be called multiple
+    // times and since the run steps do not depend on one another, this will
+    // make them run in parallel.
+    const test_step = b.step("test", "Run tests");
+
     // Creates an executable that will run `test` blocks from the executable's
     // root module.
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
     });
-
     // A run step that will run the second test executable.
     const run_exe_tests = b.addRunArtifact(exe_tests);
+    // Add to top level. By depending on the run step for the tests,
+    // we ensure that they will be run when the user runs `zig build test`.
+    test_step.dependOn(&run_exe_tests.step);
 
     // Create test executable for shapes tests
     const shapes_tests = b.addTest(.{
@@ -172,22 +179,20 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_shapes_tests = b.addRunArtifact(shapes_tests);
+    test_step.dependOn(&run_shapes_tests.step);
 
     // Create test executables for game modules using helper function
     const player_tests = addGameTest(b, "test/player_test.zig", "src/player.zig", "player", target, optimize, raylib);
     const run_player_tests = b.addRunArtifact(player_tests);
+    test_step.dependOn(&run_player_tests.step);
 
     const invader_tests = addGameTest(b, "test/invader_test.zig", "src/invader.zig", "invader", target, optimize, raylib);
     const run_invader_tests = b.addRunArtifact(invader_tests);
-
-    // A top level step for running all tests. dependOn can be called multiple
-    // times and since the run steps do not depend on one another, this will
-    // make them run in parallel.
-    const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&run_exe_tests.step);
-    test_step.dependOn(&run_shapes_tests.step);
-    test_step.dependOn(&run_player_tests.step);
     test_step.dependOn(&run_invader_tests.step);
+
+    const shield_tests = addGameTest(b, "test/shield_test.zig", "src/shield.zig", "shield", target, optimize, raylib);
+    const run_shield_tests = b.addRunArtifact(shield_tests);
+    test_step.dependOn(&run_shield_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
