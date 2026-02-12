@@ -1,5 +1,40 @@
 const std = @import("std");
 
+// Shared module definitions accessed by helper function
+var shapes_module: *std.Build.Module = undefined;
+var constants_module: *std.Build.Module = undefined;
+
+// Helper function to create test modules with standard game dependencies
+fn addGameTest(
+    b: *std.Build,
+    test_file: []const u8,
+    src_file: []const u8,
+    module_name: []const u8,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    raylib: *std.Build.Module,
+) *std.Build.Step.Compile {
+    return b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(test_file),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = module_name, .module = b.createModule(.{
+                    .root_source_file = b.path(src_file),
+                    .target = target,
+                    .optimize = optimize,
+                    .imports = &.{
+                        .{ .name = "raylib", .module = raylib },
+                        .{ .name = "shapes.zig", .module = shapes_module },
+                        .{ .name = "constants.zig", .module = constants_module },
+                    },
+                }) },
+            },
+        }),
+    });
+}
+
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
 // executed by an external runner. The functions in `std.Build` implement a DSL
@@ -28,6 +63,22 @@ pub fn build(b: *std.Build) void {
 
     const raylib = raylib_dep.module("raylib");
     const raylib_artifact = raylib_dep.artifact("raylib");
+
+    // Create reusable modules for common dependencies
+    shapes_module = b.createModule(.{
+        .root_source_file = b.path("src/shapes.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib },
+        },
+    });
+
+    constants_module = b.createModule(.{
+        .root_source_file = b.path("src/constants.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
@@ -146,58 +197,25 @@ pub fn build(b: *std.Build) void {
     // A run step that will run the second test executable.
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
-    // Create test executable for external test files
+    // Create test executable for shapes tests
     const shapes_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("test/shapes_test.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "shapes", .module = b.createModule(.{
-                    .root_source_file = b.path("src/shapes.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                    .imports = &.{
-                        .{ .name = "raylib", .module = raylib },
-                    },
-                }) },
+                .{ .name = "shapes", .module = shapes_module },
             },
         }),
     });
     const run_shapes_tests = b.addRunArtifact(shapes_tests);
 
-    // Create test executable for player tests
-    const player_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("test/player_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "player", .module = b.createModule(.{
-                    .root_source_file = b.path("src/player.zig"),
-                    .target = target,
-                    .optimize = optimize,
-                    .imports = &.{
-                        .{ .name = "raylib", .module = raylib },
-                        .{ .name = "shapes.zig", .module = b.createModule(.{
-                            .root_source_file = b.path("src/shapes.zig"),
-                            .target = target,
-                            .optimize = optimize,
-                            .imports = &.{
-                                .{ .name = "raylib", .module = raylib },
-                            },
-                        }) },
-                        .{ .name = "constants.zig", .module = b.createModule(.{
-                            .root_source_file = b.path("src/constants.zig"),
-                            .target = target,
-                            .optimize = optimize,
-                        }) },
-                    },
-                }) },
-            },
-        }),
-    });
+    // Create test executables for game modules using helper function
+    const player_tests = addGameTest(b, "test/player_test.zig", "src/player.zig", "player", target, optimize, raylib);
     const run_player_tests = b.addRunArtifact(player_tests);
+
+    const invader_tests = addGameTest(b, "test/invader_test.zig", "src/invader.zig", "invader", target, optimize, raylib);
+    const run_invader_tests = b.addRunArtifact(invader_tests);
 
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
@@ -207,6 +225,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_shapes_tests.step);
     test_step.dependOn(&run_player_tests.step);
+    test_step.dependOn(&run_invader_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
