@@ -31,14 +31,12 @@ pub fn main() void {
             .won => {
                 drawing.draw_game_stopped(&state, "You won!");
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                    state.game_won = false;
                     GameState.init_game_state(&state);
                 }
             },
             .lost => {
                 drawing.draw_game_stopped(&state, "You lost.");
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                    state.game_over = false;
                     GameState.init_game_state(&state);
                 }
             },
