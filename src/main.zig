@@ -24,26 +24,32 @@ pub fn main() void {
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.black);
 
-        if (state.game_won) {
-            game_state_module.draw_game_stopped(&state, "You won!");
-            if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                state.game_won = false;
-                GameState.init_game_state(&state);
-                continue :game_loop;
-            }
-        } else if (state.game_over) {
-            game_state_module.draw_game_stopped(&state, "You lost.");
-            if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
-                state.game_over = false;
-                GameState.init_game_state(&state);
-                continue :game_loop;
-            }
-        } else {
-            const player_goes_right = rl.isKeyDown(rl.KeyboardKey.right);
-            const player_goes_left = rl.isKeyDown(rl.KeyboardKey.left);
-            const player_shoots = rl.isKeyPressed(rl.KeyboardKey.space);
-            GameState.update_game_state(&state, &rng, player_goes_left, player_goes_right, player_shoots);
-            game_state_module.draw_game_state(&state);
+        const draw_mode = GameState.get_draw_mode(&state);
+
+        switch (draw_mode) {
+            .won => {
+                game_state_module.draw_game_stopped(&state, "You won!");
+                if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
+                    state.game_won = false;
+                    GameState.init_game_state(&state);
+                    continue :game_loop;
+                }
+            },
+            .lost => {
+                game_state_module.draw_game_stopped(&state, "You lost.");
+                if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
+                    state.game_over = false;
+                    GameState.init_game_state(&state);
+                    continue :game_loop;
+                }
+            },
+            .playing => {
+                const player_goes_right = rl.isKeyDown(rl.KeyboardKey.right);
+                const player_goes_left = rl.isKeyDown(rl.KeyboardKey.left);
+                const player_shoots = rl.isKeyPressed(rl.KeyboardKey.space);
+                GameState.process_game_frame(&state, &rng, player_goes_left, player_goes_right, player_shoots);
+                game_state_module.draw_game_state(&state);
+            },
         }
     }
 }

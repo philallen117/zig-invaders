@@ -228,6 +228,28 @@ pub fn GameStateModule(comptime RngSource: type) type {
             process_invader_bullet_shield_collisions(state);
             process_game_won_condition(state);
         }
+
+        pub const DrawMode = enum {
+            playing,
+            won,
+            lost,
+        };
+
+        pub fn get_draw_mode(state: *const GameState) DrawMode {
+            if (state.game_won) {
+                return .won;
+            } else if (state.game_over) {
+                return .lost;
+            } else {
+                return .playing;
+            }
+        }
+
+        pub fn process_game_frame(state: *GameState, rng: *RngSource, player_goes_left: bool, player_goes_right: bool, player_shoots: bool) void {
+            if (!state.game_won and !state.game_over) {
+                update_game_state(state, rng, player_goes_left, player_goes_right, player_shoots);
+            }
+        }
     };
 }
 

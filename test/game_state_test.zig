@@ -1098,3 +1098,130 @@ test "process_game_won_condition - resets game_won to false when invaders respaw
     // Should be set back to false
     try testing.expect(!state.game_won);
 }
+
+// Game loop tests
+test "get_draw_mode - returns playing when game is active" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    const mode = GameState.get_draw_mode(&state);
+
+    try testing.expectEqual(GameState.DrawMode.playing, mode);
+}
+
+test "get_draw_mode - returns won when player has won" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_won = true;
+
+    const mode = GameState.get_draw_mode(&state);
+
+    try testing.expectEqual(GameState.DrawMode.won, mode);
+}
+
+test "get_draw_mode - returns lost when player has lost" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_over = true;
+
+    const mode = GameState.get_draw_mode(&state);
+
+    try testing.expectEqual(GameState.DrawMode.lost, mode);
+}
+
+test "get_draw_mode - won takes priority over lost" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_won = true;
+    state.game_over = true;
+
+    const mode = GameState.get_draw_mode(&state);
+
+    try testing.expectEqual(GameState.DrawMode.won, mode);
+}
+
+test "process_game_frame - no updates when game is won" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_won = true;
+
+    // Record initial state
+    const initial_player_x = state.player.shape.left_x;
+    const initial_score = state.score;
+    const initial_invader_timer = state.invader_move_timer;
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, true, false, true);
+
+    // Verify nothing changed
+    try testing.expectEqual(initial_player_x, state.player.shape.left_x);
+    try testing.expectEqual(initial_score, state.score);
+    try testing.expectEqual(initial_invader_timer, state.invader_move_timer);
+}
+
+test "process_game_frame - no updates when game is over" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_over = true;
+
+    // Record initial state
+    const initial_player_x = state.player.shape.left_x;
+    const initial_score = state.score;
+    const initial_invader_timer = state.invader_move_timer;
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, true, false, true);
+
+    // Verify nothing changed
+    try testing.expectEqual(initial_player_x, state.player.shape.left_x);
+    try testing.expectEqual(initial_score, state.score);
+    try testing.expectEqual(initial_invader_timer, state.invader_move_timer);
+}
+
+test "process_game_frame - updates when game is active" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    const initial_player_x = state.player.shape.left_x;
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, true, false, false);
+
+    // Player should have moved left
+    try testing.expect(state.player.shape.left_x < initial_player_x);
+}
+
+test "process_game_frame - player bullets fired when game is active" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, false, false, true);
+
+    // First bullet should be active
+    try testing.expect(state.player_bullets[0].active);
+}
+
+test "process_game_frame - no player bullets fired when game is won" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_won = true;
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, false, false, true);
+
+    // No bullets should be active
+    try testing.expect(!state.player_bullets[0].active);
+}
+
+test "process_game_frame - no player bullets fired when game is over" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    state.game_over = true;
+
+    var rng = MockRng{};
+    GameState.process_game_frame(&state, &rng, false, false, true);
+
+    // No bullets should be active
+    try testing.expect(!state.player_bullets[0].active);
+}
