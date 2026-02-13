@@ -1,9 +1,7 @@
-const rl = @import("raylib");
 const shapes = @import("shapes.zig");
 const constants = @import("constants.zig");
 
 const GameObjectShape = shapes.GameObjectShape;
-const drawBox = shapes.drawBox;
 
 pub const PlayerShape = GameObjectShape(50, 30);
 
@@ -30,9 +28,6 @@ pub const Player = struct {
             self.shape.left_x = constants.screenWidth - PlayerShape.width;
         }
     }
-    pub fn draw(self: @This()) void {
-        drawBox(PlayerShape, rl.Color.blue, self.shape, true);
-    }
 };
 
 pub const PlayerBulletShape = GameObjectShape(4, 10);
@@ -57,9 +52,5 @@ pub const PlayerBullet = struct {
                 self.active = false;
             }
         }
-    }
-
-    pub fn draw(self: @This()) void {
-        drawBox(PlayerBulletShape, rl.Color.white, self.shape, self.active);
     }
 };

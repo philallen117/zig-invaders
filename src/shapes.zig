@@ -1,5 +1,3 @@
-const rl = @import("raylib");
-
 pub const BoundingBox = struct {
     left_x: i32,
     right_x: i32,
@@ -30,16 +28,4 @@ pub fn GameObjectShape(w: i32, h: i32) type {
             };
         }
     };
-}
-
-pub fn drawBox(shapeType: type, comptime color: rl.Color, self: shapeType, active: bool) void {
-    if (active) {
-        rl.drawRectangle(
-            self.left_x,
-            self.top_y,
-            shapeType.width,
-            shapeType.height,
-            color,
-        );
-    }
 }

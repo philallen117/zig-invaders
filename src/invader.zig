@@ -1,9 +1,7 @@
-const rl = @import("raylib");
 const shapes = @import("shapes.zig");
 const constants = @import("constants.zig");
 
 const GameObjectShape = shapes.GameObjectShape;
-const drawBox = shapes.drawBox;
 
 pub const InvaderShape = GameObjectShape(40, 30);
 
@@ -27,10 +25,6 @@ pub const Invader = struct {
     pub fn move(self: *@This(), dx: i32, dy: i32) void {
         self.shape.left_x += dx;
         self.shape.top_y += dy;
-    }
-
-    pub fn draw(self: @This()) void {
-        drawBox(InvaderShape, rl.Color.red, self.shape, self.alive);
     }
 };
 
@@ -56,9 +50,5 @@ pub const InvaderBullet = struct {
                 self.active = false;
             }
         }
-    }
-
-    pub fn draw(self: @This()) void {
-        drawBox(InvaderBulletShape, rl.Color.yellow, self.shape, self.active);
     }
 };

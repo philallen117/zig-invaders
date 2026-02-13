@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const constants = @import("constants.zig");
 const game_state_module = @import("game_state.zig");
+const drawing = @import("drawing.zig");
 
 const RaylibRng = struct {
     pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
@@ -28,7 +29,7 @@ pub fn main() void {
 
         switch (draw_mode) {
             .won => {
-                game_state_module.draw_game_stopped(&state, "You won!");
+                drawing.draw_game_stopped(&state, "You won!");
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                     state.game_won = false;
                     GameState.init_game_state(&state);
@@ -36,7 +37,7 @@ pub fn main() void {
                 }
             },
             .lost => {
-                game_state_module.draw_game_stopped(&state, "You lost.");
+                drawing.draw_game_stopped(&state, "You lost.");
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                     state.game_over = false;
                     GameState.init_game_state(&state);
@@ -48,7 +49,7 @@ pub fn main() void {
                 const player_goes_left = rl.isKeyDown(rl.KeyboardKey.left);
                 const player_shoots = rl.isKeyPressed(rl.KeyboardKey.space);
                 GameState.process_game_frame(&state, &rng, player_goes_left, player_goes_right, player_shoots);
-                game_state_module.draw_game_state(&state);
+                drawing.draw_game_state(&state);
             },
         }
     }
