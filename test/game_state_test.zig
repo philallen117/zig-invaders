@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const game_state = @import("game_state");
+const game_state_module = @import("game_state");
 const constants = @import("constants");
 const player_mod = @import("player");
 const invader_mod = @import("invader");
@@ -13,9 +13,20 @@ const InvaderShape = invader_mod.InvaderShape;
 const Shield = shield_mod.Shield;
 const ShieldShape = shield_mod.ShieldShape;
 
+const MockRng = struct {
+    pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+        _ = self;
+        _ = min;
+        _ = max;
+        return 0; // Default: never shoots
+    }
+};
+
+const GameState = game_state_module.GameStateModule(MockRng);
+
 test "init_game_state - invader horizontal spacing" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Check spacing between adjacent invaders in same row
     const first_row = state.invaders[0];
@@ -26,8 +37,8 @@ test "init_game_state - invader horizontal spacing" {
 }
 
 test "init_game_state - invader vertical spacing" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Check spacing between rows
     const row0_invader = state.invaders[0][0];
@@ -37,8 +48,8 @@ test "init_game_state - invader vertical spacing" {
 }
 
 test "init_game_state - invader first position" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const first_invader = state.invaders[0][0];
 
@@ -47,8 +58,8 @@ test "init_game_state - invader first position" {
 }
 
 test "init_game_state - shield horizontal spacing" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Check spacing between first two shields
     const shield0_x = state.shields[0].shape.left_x;
@@ -58,8 +69,8 @@ test "init_game_state - shield horizontal spacing" {
 }
 
 test "init_game_state - shield first position" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const first_shield = state.shields[0];
 
@@ -68,8 +79,8 @@ test "init_game_state - shield first position" {
 }
 
 test "init_game_state - all shields at same y position" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const expected_y = constants.shieldStartY;
     for (state.shields) |shield| {
@@ -78,21 +89,21 @@ test "init_game_state - all shields at same y position" {
 }
 
 test "fire_player_bullet - fires when inactive bullet available" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Initially no bullets are active
     try testing.expect(!state.player_bullets[0].active);
 
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     // First bullet should now be active
     try testing.expect(state.player_bullets[0].active);
 }
 
 test "fire_player_bullet - does nothing when all bullets active" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Mark all bullets as active
     for (&state.player_bullets) |*b| {
@@ -100,7 +111,7 @@ test "fire_player_bullet - does nothing when all bullets active" {
     }
 
     // This should not crash or cause error
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     // All bullets should still be active
     for (state.player_bullets) |b| {
@@ -109,13 +120,13 @@ test "fire_player_bullet - does nothing when all bullets active" {
 }
 
 test "fire_player_bullet - fires first inactive bullet only" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Mark first bullet as active, leave rest inactive
     state.player_bullets[0].active = true;
 
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     // First should still be active, second should now be active
     try testing.expect(state.player_bullets[0].active);
@@ -125,13 +136,13 @@ test "fire_player_bullet - fires first inactive bullet only" {
 }
 
 test "fire_player_bullet - positions bullet at player top middle" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const player_x = state.player.shape.left_x;
     const player_y = state.player.shape.top_y;
 
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     const bullet = state.player_bullets[0];
     const expected_x = player_x + PlayerShape.widthBy2 - PlayerBulletShape.widthBy2;
@@ -142,14 +153,14 @@ test "fire_player_bullet - positions bullet at player top middle" {
 }
 
 test "fire_player_bullet - bullet x position centers on player" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Move player to specific position
     state.player.shape.left_x = 100;
     state.player.shape.top_y = 200;
 
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     const bullet = state.player_bullets[0];
     // PlayerShape.width = 50, widthBy2 = 25
@@ -160,13 +171,13 @@ test "fire_player_bullet - bullet x position centers on player" {
 }
 
 test "fire_player_bullet - multiple fires activate sequential bullets" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Fire three times
-    game_state.fire_player_bullet(&state);
-    game_state.fire_player_bullet(&state);
-    game_state.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
+    GameState.fire_player_bullet(&state);
 
     // First three should be active
     try testing.expect(state.player_bullets[0].active);
@@ -177,8 +188,8 @@ test "fire_player_bullet - multiple fires activate sequential bullets" {
 }
 
 test "process_player_bullet_invader_collisions - invader dies on collision" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position bullet to collide with first invader
     const invader = &state.invaders[0][0];
@@ -188,14 +199,14 @@ test "process_player_bullet_invader_collisions - invader dies on collision" {
 
     try testing.expect(invader.alive);
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     try testing.expect(!invader.alive);
 }
 
 test "process_player_bullet_invader_collisions - bullet becomes inactive" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position bullet to collide with first invader
     const invader = &state.invaders[0][0];
@@ -203,14 +214,14 @@ test "process_player_bullet_invader_collisions - bullet becomes inactive" {
     state.player_bullets[0].shape.left_x = invader.shape.left_x;
     state.player_bullets[0].shape.top_y = invader.shape.top_y;
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     try testing.expect(!state.player_bullets[0].active);
 }
 
 test "process_player_bullet_invader_collisions - score increases by constant" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const initial_score = state.score;
 
@@ -220,14 +231,14 @@ test "process_player_bullet_invader_collisions - score increases by constant" {
     state.player_bullets[0].shape.left_x = invader.shape.left_x;
     state.player_bullets[0].shape.top_y = invader.shape.top_y;
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     try testing.expectEqual(initial_score + constants.invaderKillScore, state.score);
 }
 
 test "process_player_bullet_invader_collisions - dead invaders do not collide" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Kill first invader
     state.invaders[0][0].alive = false;
@@ -239,7 +250,7 @@ test "process_player_bullet_invader_collisions - dead invaders do not collide" {
 
     const initial_score = state.score;
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     // Bullet should still be active (no collision)
     try testing.expect(state.player_bullets[0].active);
@@ -248,8 +259,8 @@ test "process_player_bullet_invader_collisions - dead invaders do not collide" {
 }
 
 test "process_player_bullet_invader_collisions - bullet kills at most one invader" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position two invaders at same location (contrived but tests the logic)
     state.invaders[0][0].shape.left_x = 100;
@@ -262,7 +273,7 @@ test "process_player_bullet_invader_collisions - bullet kills at most one invade
     state.player_bullets[0].shape.left_x = 100;
     state.player_bullets[0].shape.top_y = 100;
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     // Only one invader should be dead
     const dead_count = blk: {
@@ -275,8 +286,8 @@ test "process_player_bullet_invader_collisions - bullet kills at most one invade
 }
 
 test "process_player_bullet_invader_collisions - inactive bullets do not collide" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position inactive bullet where invader is
     const invader = &state.invaders[0][0];
@@ -284,15 +295,15 @@ test "process_player_bullet_invader_collisions - inactive bullets do not collide
     state.player_bullets[0].shape.left_x = invader.shape.left_x;
     state.player_bullets[0].shape.top_y = invader.shape.top_y;
 
-    game_state.process_player_bullet_invader_collisions(&state);
+    GameState.process_player_bullet_invader_collisions(&state);
 
     // Invader should still be alive
     try testing.expect(invader.alive);
 }
 
 test "process_player_bullet_shield_collisions - bullet becomes inactive" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position bullet to collide with first shield
     const shield = &state.shields[0];
@@ -300,14 +311,14 @@ test "process_player_bullet_shield_collisions - bullet becomes inactive" {
     state.player_bullets[0].shape.left_x = shield.shape.left_x;
     state.player_bullets[0].shape.top_y = shield.shape.top_y;
 
-    game_state.process_player_bullet_shield_collisions(&state);
+    GameState.process_player_bullet_shield_collisions(&state);
 
     try testing.expect(!state.player_bullets[0].active);
 }
 
 test "process_player_bullet_shield_collisions - shield health reduces by 1" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position bullet to collide with first shield
     const shield = &state.shields[0];
@@ -316,14 +327,14 @@ test "process_player_bullet_shield_collisions - shield health reduces by 1" {
     state.player_bullets[0].shape.left_x = shield.shape.left_x;
     state.player_bullets[0].shape.top_y = shield.shape.top_y;
 
-    game_state.process_player_bullet_shield_collisions(&state);
+    GameState.process_player_bullet_shield_collisions(&state);
 
     try testing.expectEqual(initial_health - 1, shield.health);
 }
 
 test "process_player_bullet_shield_collisions - zero health shield does not collide" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Set shield health to 0
     state.shields[0].health = 0;
@@ -333,7 +344,7 @@ test "process_player_bullet_shield_collisions - zero health shield does not coll
     state.player_bullets[0].shape.left_x = state.shields[0].shape.left_x;
     state.player_bullets[0].shape.top_y = state.shields[0].shape.top_y;
 
-    game_state.process_player_bullet_shield_collisions(&state);
+    GameState.process_player_bullet_shield_collisions(&state);
 
     // Bullet should still be active (no collision)
     try testing.expect(state.player_bullets[0].active);
@@ -342,8 +353,8 @@ test "process_player_bullet_shield_collisions - zero health shield does not coll
 }
 
 test "process_player_bullet_shield_collisions - inactive bullets do not collide" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const shield = &state.shields[0];
     const initial_health = shield.health;
@@ -353,15 +364,15 @@ test "process_player_bullet_shield_collisions - inactive bullets do not collide"
     state.player_bullets[0].shape.left_x = shield.shape.left_x;
     state.player_bullets[0].shape.top_y = shield.shape.top_y;
 
-    game_state.process_player_bullet_shield_collisions(&state);
+    GameState.process_player_bullet_shield_collisions(&state);
 
     // Shield health should not change
     try testing.expectEqual(initial_health, shield.health);
 }
 
 test "process_player_bullet_shield_collisions - bullet hits at most one shield" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position two shields at same location (contrived but tests the logic)
     state.shields[0].shape.left_x = 200;
@@ -377,7 +388,7 @@ test "process_player_bullet_shield_collisions - bullet hits at most one shield" 
     state.player_bullets[0].shape.left_x = 200;
     state.player_bullets[0].shape.top_y = 200;
 
-    game_state.process_player_bullet_shield_collisions(&state);
+    GameState.process_player_bullet_shield_collisions(&state);
 
     // Only one shield should be damaged
     const damaged_count = blk: {
@@ -390,8 +401,8 @@ test "process_player_bullet_shield_collisions - bullet hits at most one shield" 
 }
 
 test "process_invader_movement - does not move until moveDelay frames" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const initial_x = state.invaders[0][0].shape.left_x;
     const initial_y = state.invaders[0][0].shape.top_y;
@@ -399,7 +410,7 @@ test "process_invader_movement - does not move until moveDelay frames" {
     // Call process_invader_movement for moveDelay - 1 frames
     var i: i32 = 0;
     while (i < Invader.moveDelay - 1) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Invaders should not have moved yet
@@ -408,15 +419,15 @@ test "process_invader_movement - does not move until moveDelay frames" {
 }
 
 test "process_invader_movement - moves after exactly moveDelay frames" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     const initial_x = state.invaders[0][0].shape.left_x;
 
     // Call process_invader_movement for exactly moveDelay frames
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Invaders should have moved right (direction = 1)
@@ -424,38 +435,38 @@ test "process_invader_movement - moves after exactly moveDelay frames" {
 }
 
 test "process_invader_movement - timer increments each frame" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     try testing.expectEqual(@as(i32, 0), state.invader_move_timer);
 
-    game_state.process_invader_movement(&state);
+    GameState.process_invader_movement(&state);
     try testing.expectEqual(@as(i32, 1), state.invader_move_timer);
 
-    game_state.process_invader_movement(&state);
+    GameState.process_invader_movement(&state);
     try testing.expectEqual(@as(i32, 2), state.invader_move_timer);
 }
 
 test "process_invader_movement - timer resets after movement" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Move to just before moveDelay
     var i: i32 = 0;
     while (i < Invader.moveDelay - 1) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     try testing.expectEqual(Invader.moveDelay - 1, state.invader_move_timer);
 
     // One more call should trigger movement and reset timer
-    game_state.process_invader_movement(&state);
+    GameState.process_invader_movement(&state);
     try testing.expectEqual(@as(i32, 0), state.invader_move_timer);
 }
 
 test "process_invader_movement - invaders move collectively preserving distances" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Record initial positions and distances
     const inv_0_0_x = state.invaders[0][0].shape.left_x;
@@ -469,7 +480,7 @@ test "process_invader_movement - invaders move collectively preserving distances
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Check distances are preserved
@@ -481,8 +492,8 @@ test "process_invader_movement - invaders move collectively preserving distances
 }
 
 test "process_invader_movement - initial direction is right" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     try testing.expectEqual(@as(i32, 1), state.invader_direction);
 
@@ -491,7 +502,7 @@ test "process_invader_movement - initial direction is right" {
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Should move right (positive x)
@@ -499,8 +510,8 @@ test "process_invader_movement - initial direction is right" {
 }
 
 test "process_invader_movement - toggles direction at right edge" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position invader near right edge
     state.invaders[0][0].shape.left_x = constants.screenWidth - InvaderShape.width - 2;
@@ -511,7 +522,7 @@ test "process_invader_movement - toggles direction at right edge" {
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Direction should have toggled
@@ -521,8 +532,8 @@ test "process_invader_movement - toggles direction at right edge" {
 }
 
 test "process_invader_movement - toggles direction at left edge" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position invader near left edge, moving left
     state.invaders[0][0].shape.left_x = 2;
@@ -533,7 +544,7 @@ test "process_invader_movement - toggles direction at left edge" {
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Direction should have toggled back
@@ -543,8 +554,8 @@ test "process_invader_movement - toggles direction at left edge" {
 }
 
 test "process_invader_movement - all invaders drop when one hits edge" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Position only first invader near edge
     state.invaders[0][0].shape.left_x = constants.screenWidth - InvaderShape.width - 2;
@@ -556,7 +567,7 @@ test "process_invader_movement - all invaders drop when one hits edge" {
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // All invaders should have dropped
@@ -565,8 +576,8 @@ test "process_invader_movement - all invaders drop when one hits edge" {
 }
 
 test "process_invader_movement - dead invaders do not affect edge detection" {
-    var state: game_state.GameState = undefined;
-    game_state.init_game_state(&state);
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
 
     // Kill all invaders except one in the middle
     for (&state.invaders) |*row| {
@@ -586,7 +597,7 @@ test "process_invader_movement - dead invaders do not affect edge detection" {
     // Trigger movement
     var i: i32 = 0;
     while (i < Invader.moveDelay) : (i += 1) {
-        game_state.process_invader_movement(&state);
+        GameState.process_invader_movement(&state);
     }
 
     // Should have moved right, not dropped

@@ -37,4 +37,8 @@ Now add tests for invader movement.
 
 --- commit
 
+process_invader_shooting calls raylib.getRandomValue directly. in order to support mocking, i would like to parameterize process_invader_shooting by a function that returns a stream of random values. moreover, I would like to avoid a direct dependency of state update logic on raylib. Recommend a design or alternative designs. Don't make changes, just discuss design options.
+
+--- commit
+
 Now add test for invader bullets.
