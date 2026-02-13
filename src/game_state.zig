@@ -165,6 +165,46 @@ pub fn GameStateModule(comptime RngSource: type) type {
             }
         }
 
+        pub fn process_invader_bullet_shield_collisions(state: *GameState) void {
+            for (&state.invader_bullets) |*b| {
+                if (b.active) {
+                    const bRect = b.shape.getBox();
+                    for (&state.shields) |*s| {
+                        if (s.health > 0 and bRect.intersects(s.shape.getBox())) {
+                            b.active = false;
+                            s.health -= 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        pub fn process_invader_bullet_player_collisions(state: *GameState) void {
+            for (&state.invader_bullets) |*b| {
+                if (b.active) {
+                    const bRect = b.shape.getBox();
+                    if (bRect.intersects(state.player.shape.getBox())) {
+                        state.game_over = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        pub fn process_game_won_condition(state: *GameState) void {
+            // Check for game won. Start true and negate if there is a live invader.
+            state.game_won = true;
+            invaders: for (&state.invaders) |*row| {
+                for (row) |*invader| {
+                    if (invader.alive) {
+                        state.game_won = false;
+                        break :invaders;
+                    }
+                }
+            }
+        }
+
         pub fn update_game_state(state: *GameState, rng: *RngSource, player_goes_left: bool, player_goes_right: bool, player_shoots: bool) void {
             state.player.move(player_goes_left, player_goes_right);
             if (player_shoots) {
@@ -184,32 +224,9 @@ pub fn GameStateModule(comptime RngSource: type) type {
                 b.move();
             }
             // Check whether player or shield hit.
-            for (&state.invader_bullets) |*b| {
-                if (b.active) {
-                    const bRect = b.shape.getBox();
-                    if (bRect.intersects(state.player.shape.getBox())) {
-                        state.game_over = true;
-                        break;
-                    }
-                    for (&state.shields) |*s| {
-                        if (s.health > 0 and bRect.intersects(s.shape.getBox())) {
-                            b.active = false;
-                            s.health -= 1;
-                            break;
-                        }
-                    }
-                }
-            }
-            // Check for game won. Start true and negate if there is a live invader.
-            state.game_won = true;
-            invaders: for (&state.invaders) |*row| {
-                for (row) |*invader| {
-                    if (invader.alive) {
-                        state.game_won = false;
-                        break :invaders;
-                    }
-                }
-            }
+            process_invader_bullet_player_collisions(state);
+            process_invader_bullet_shield_collisions(state);
+            process_game_won_condition(state);
         }
     };
 }

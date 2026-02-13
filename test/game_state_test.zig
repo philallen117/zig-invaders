@@ -876,3 +876,102 @@ test "process_invader_shooting - finds first available bullet" {
     try testing.expect(state.invader_bullets[2].active);
     try testing.expect(!state.invader_bullets[3].active);
 }
+
+test "process_invader_bullet_shield_collisions - bullet becomes inactive" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position bullet to collide with first shield
+    const shield = &state.shields[0];
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = shield.shape.left_x;
+    state.invader_bullets[0].shape.top_y = shield.shape.top_y;
+
+    GameState.process_invader_bullet_shield_collisions(&state);
+
+    try testing.expect(!state.invader_bullets[0].active);
+}
+
+test "process_invader_bullet_shield_collisions - shield health reduces by 1" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position bullet to collide with first shield
+    const shield = &state.shields[0];
+    const initial_health = shield.health;
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = shield.shape.left_x;
+    state.invader_bullets[0].shape.top_y = shield.shape.top_y;
+
+    GameState.process_invader_bullet_shield_collisions(&state);
+
+    try testing.expectEqual(initial_health - 1, shield.health);
+}
+
+test "process_invader_bullet_shield_collisions - zero health shield does not collide" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Set shield health to 0
+    state.shields[0].health = 0;
+
+    // Position bullet where shield is
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = state.shields[0].shape.left_x;
+    state.invader_bullets[0].shape.top_y = state.shields[0].shape.top_y;
+
+    GameState.process_invader_bullet_shield_collisions(&state);
+
+    // Bullet should still be active (no collision)
+    try testing.expect(state.invader_bullets[0].active);
+    // Shield health should still be 0
+    try testing.expectEqual(@as(i32, 0), state.shields[0].health);
+}
+
+test "process_invader_bullet_shield_collisions - inactive bullets do not collide" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    const shield = &state.shields[0];
+    const initial_health = shield.health;
+
+    // Position inactive bullet where shield is
+    state.invader_bullets[0].active = false;
+    state.invader_bullets[0].shape.left_x = shield.shape.left_x;
+    state.invader_bullets[0].shape.top_y = shield.shape.top_y;
+
+    GameState.process_invader_bullet_shield_collisions(&state);
+
+    // Shield health should not change
+    try testing.expectEqual(initial_health, shield.health);
+}
+
+test "process_invader_bullet_shield_collisions - bullet hits at most one shield" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position two shields at same location (contrived but tests the logic)
+    state.shields[0].shape.left_x = 200;
+    state.shields[0].shape.top_y = 200;
+    state.shields[1].shape.left_x = 200;
+    state.shields[1].shape.top_y = 200;
+
+    const initial_health_0 = state.shields[0].health;
+    const initial_health_1 = state.shields[1].health;
+
+    // Position bullet to collide with both
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = 200;
+    state.invader_bullets[0].shape.top_y = 200;
+
+    GameState.process_invader_bullet_shield_collisions(&state);
+
+    // Only one shield should be damaged
+    const damaged_count = blk: {
+        var count: u32 = 0;
+        if (state.shields[0].health < initial_health_0) count += 1;
+        if (state.shields[1].health < initial_health_1) count += 1;
+        break :blk count;
+    };
+    try testing.expectEqual(@as(u32, 1), damaged_count);
+}

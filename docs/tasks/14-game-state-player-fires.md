@@ -53,3 +53,7 @@ Now add test for invaders shooting bullets.
 Now for collision logic
 
 - When an invader bullet strikes a shield, the bullet becomes inactive and the shield health reduces, possibly causing destruction, analogously to player bullets.
+
+---
+
+since you have extracted process_invader_bullet_player_collisions, it makes sense to extract the remaining update logic to detect player winning. we will test it in a following task.
