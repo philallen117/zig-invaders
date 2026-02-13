@@ -975,3 +975,126 @@ test "process_invader_bullet_shield_collisions - bullet hits at most one shield"
     };
     try testing.expectEqual(@as(u32, 1), damaged_count);
 }
+
+test "process_invader_bullet_player_collisions - player loses when hit" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position bullet to collide with player
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = state.player.shape.left_x;
+    state.invader_bullets[0].shape.top_y = state.player.shape.top_y;
+
+    try testing.expect(!state.game_over);
+
+    GameState.process_invader_bullet_player_collisions(&state);
+
+    try testing.expect(state.game_over);
+}
+
+test "process_invader_bullet_player_collisions - inactive bullet does not cause loss" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position inactive bullet at player position
+    state.invader_bullets[0].active = false;
+    state.invader_bullets[0].shape.left_x = state.player.shape.left_x;
+    state.invader_bullets[0].shape.top_y = state.player.shape.top_y;
+
+    GameState.process_invader_bullet_player_collisions(&state);
+
+    try testing.expect(!state.game_over);
+}
+
+test "process_invader_bullet_player_collisions - bullet misses player" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position bullet away from player
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = state.player.shape.left_x + 1000;
+    state.invader_bullets[0].shape.top_y = state.player.shape.top_y + 1000;
+
+    GameState.process_invader_bullet_player_collisions(&state);
+
+    try testing.expect(!state.game_over);
+}
+
+test "process_invader_bullet_player_collisions - stops checking after first hit" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Position two bullets at player position
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[0].shape.left_x = state.player.shape.left_x;
+    state.invader_bullets[0].shape.top_y = state.player.shape.top_y;
+    state.invader_bullets[1].active = true;
+    state.invader_bullets[1].shape.left_x = state.player.shape.left_x;
+    state.invader_bullets[1].shape.top_y = state.player.shape.top_y;
+
+    GameState.process_invader_bullet_player_collisions(&state);
+
+    // Both bullets should still be active (function breaks after first hit)
+    try testing.expect(state.invader_bullets[0].active);
+    try testing.expect(state.invader_bullets[1].active);
+    try testing.expect(state.game_over);
+}
+
+test "process_game_won_condition - player wins when all invaders dead" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Kill all invaders
+    for (&state.invaders) |*row| {
+        for (row) |*invader| {
+            invader.alive = false;
+        }
+    }
+
+    try testing.expect(!state.game_won);
+
+    GameState.process_game_won_condition(&state);
+
+    try testing.expect(state.game_won);
+}
+
+test "process_game_won_condition - player does not win when invaders alive" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // All invaders are alive by default
+    GameState.process_game_won_condition(&state);
+
+    try testing.expect(!state.game_won);
+}
+
+test "process_game_won_condition - player does not win with one invader alive" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Kill all but one invader
+    for (&state.invaders) |*row| {
+        for (row) |*invader| {
+            invader.alive = false;
+        }
+    }
+    state.invaders[2][5].alive = true;
+
+    GameState.process_game_won_condition(&state);
+
+    try testing.expect(!state.game_won);
+}
+
+test "process_game_won_condition - resets game_won to false when invaders respawn" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+
+    // Set game_won to true
+    state.game_won = true;
+
+    // All invaders still alive
+    GameState.process_game_won_condition(&state);
+
+    // Should be set back to false
+    try testing.expect(!state.game_won);
+}
