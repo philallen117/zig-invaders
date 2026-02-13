@@ -605,3 +605,274 @@ test "process_invader_movement - dead invaders do not affect edge detection" {
     try testing.expectEqual(initial_y, state.invaders[2][5].shape.top_y);
     try testing.expectEqual(@as(i32, 1), state.invader_direction);
 }
+
+test "process_invader_shooting - does not shoot until shootDelay frames" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    var rng = MockRng{};
+
+    // Call for shootDelay - 1 frames
+    var i: i32 = 0;
+    while (i < Invader.shootDelay - 1) : (i += 1) {
+        GameState.process_invader_shooting(&state, &rng);
+    }
+
+    // No bullets should be active
+    for (state.invader_bullets) |b| {
+        try testing.expect(!b.active);
+    }
+}
+
+test "process_invader_shooting - timer increments each frame" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    var rng = MockRng{};
+
+    try testing.expectEqual(@as(i32, 0), state.invader_shoot_timer);
+
+    GameState.process_invader_shooting(&state, &rng);
+    try testing.expectEqual(@as(i32, 1), state.invader_shoot_timer);
+
+    GameState.process_invader_shooting(&state, &rng);
+    try testing.expectEqual(@as(i32, 2), state.invader_shoot_timer);
+}
+
+test "process_invader_shooting - timer resets after shootDelay" {
+    var state: GameState.GameState = undefined;
+    GameState.init_game_state(&state);
+    var rng = MockRng{};
+
+    // Move to just before shootDelay
+    var i: i32 = 0;
+    while (i < Invader.shootDelay - 1) : (i += 1) {
+        GameState.process_invader_shooting(&state, &rng);
+    }
+
+    try testing.expectEqual(Invader.shootDelay - 1, state.invader_shoot_timer);
+
+    // One more call should trigger shooting opportunity and reset timer
+    GameState.process_invader_shooting(&state, &rng);
+    try testing.expectEqual(@as(i32, 0), state.invader_shoot_timer);
+}
+
+test "process_invader_shooting - invader shoots when random value is low enough" {
+    const ShootingRng = struct {
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = self;
+            _ = min;
+            _ = max;
+            return 5; // Exactly at shootChance threshold
+        }
+    };
+    const ShootingGameState = game_state_module.GameStateModule(ShootingRng);
+
+    var state: ShootingGameState.GameState = undefined;
+    ShootingGameState.init_game_state(&state);
+    var rng = ShootingRng{};
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        ShootingGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // At least one bullet should be active (first alive invader should have shot)
+    var bullet_found = false;
+    for (state.invader_bullets) |b| {
+        if (b.active) {
+            bullet_found = true;
+            break;
+        }
+    }
+    try testing.expect(bullet_found);
+}
+
+test "process_invader_shooting - invader does not shoot when random value too high" {
+    const NonShootingRng = struct {
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = self;
+            _ = min;
+            _ = max;
+            return 100; // Above shootChance
+        }
+    };
+    const NonShootingGameState = game_state_module.GameStateModule(NonShootingRng);
+
+    var state: NonShootingGameState.GameState = undefined;
+    NonShootingGameState.init_game_state(&state);
+    var rng = NonShootingRng{};
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        NonShootingGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // No bullets should be active
+    for (state.invader_bullets) |b| {
+        try testing.expect(!b.active);
+    }
+}
+
+test "process_invader_shooting - multiple invaders can shoot in same frame" {
+    const AllShootRng = struct {
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = self;
+            _ = min;
+            _ = max;
+            return 1; // Well below shootChance
+        }
+    };
+    const AllShootGameState = game_state_module.GameStateModule(AllShootRng);
+
+    var state: AllShootGameState.GameState = undefined;
+    AllShootGameState.init_game_state(&state);
+    var rng = AllShootRng{};
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        AllShootGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // Multiple bullets should be active
+    var active_count: u32 = 0;
+    for (state.invader_bullets) |b| {
+        if (b.active) {
+            active_count += 1;
+        }
+    }
+    try testing.expect(active_count > 1);
+}
+
+test "process_invader_shooting - no error when all bullets active" {
+    const AllShootRng = struct {
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = self;
+            _ = min;
+            _ = max;
+            return 1;
+        }
+    };
+    const AllShootGameState = game_state_module.GameStateModule(AllShootRng);
+
+    var state: AllShootGameState.GameState = undefined;
+    AllShootGameState.init_game_state(&state);
+    var rng = AllShootRng{};
+
+    // Activate all bullets
+    for (&state.invader_bullets) |*b| {
+        b.active = true;
+    }
+
+    // This should not crash
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        AllShootGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // All bullets should still be active
+    for (state.invader_bullets) |b| {
+        try testing.expect(b.active);
+    }
+}
+
+test "process_invader_shooting - bullet positioned at bottom middle of invader" {
+    const OneShootRng = struct {
+        call_count: u32 = 0,
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = min;
+            _ = max;
+            self.call_count += 1;
+            // Only first invader shoots
+            return if (self.call_count == 1) 1 else 100;
+        }
+    };
+    const OneShootGameState = game_state_module.GameStateModule(OneShootRng);
+
+    var state: OneShootGameState.GameState = undefined;
+    OneShootGameState.init_game_state(&state);
+    var rng = OneShootRng{};
+
+    const invader = state.invaders[0][0];
+    const expected_x = invader.shape.left_x + InvaderShape.widthBy2 - invader_mod.InvaderBulletShape.widthBy2;
+    const expected_y = invader.shape.top_y + InvaderShape.height;
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        OneShootGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // First bullet should be at invader's bottom middle
+    try testing.expect(state.invader_bullets[0].active);
+    try testing.expectEqual(expected_x, state.invader_bullets[0].shape.left_x);
+    try testing.expectEqual(expected_y, state.invader_bullets[0].shape.top_y);
+}
+
+test "process_invader_shooting - dead invaders do not shoot" {
+    const AllShootRng = struct {
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = self;
+            _ = min;
+            _ = max;
+            return 1;
+        }
+    };
+    const AllShootGameState = game_state_module.GameStateModule(AllShootRng);
+
+    var state: AllShootGameState.GameState = undefined;
+    AllShootGameState.init_game_state(&state);
+    var rng = AllShootRng{};
+
+    // Kill all invaders
+    for (&state.invaders) |*row| {
+        for (row) |*invader| {
+            invader.alive = false;
+        }
+    }
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        AllShootGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // No bullets should be active
+    for (state.invader_bullets) |b| {
+        try testing.expect(!b.active);
+    }
+}
+
+test "process_invader_shooting - finds first available bullet" {
+    const OneShootRng = struct {
+        call_count: u32 = 0,
+        pub fn getRandomValue(self: *@This(), min: i32, max: i32) i32 {
+            _ = min;
+            _ = max;
+            self.call_count += 1;
+            return if (self.call_count == 1) 1 else 100;
+        }
+    };
+    const OneShootGameState = game_state_module.GameStateModule(OneShootRng);
+
+    var state: OneShootGameState.GameState = undefined;
+    OneShootGameState.init_game_state(&state);
+    var rng = OneShootRng{};
+
+    // Activate first two bullets
+    state.invader_bullets[0].active = true;
+    state.invader_bullets[1].active = true;
+
+    // Trigger shooting
+    var i: i32 = 0;
+    while (i < Invader.shootDelay) : (i += 1) {
+        OneShootGameState.process_invader_shooting(&state, &rng);
+    }
+
+    // Third bullet should be the one activated
+    try testing.expect(state.invader_bullets[0].active);
+    try testing.expect(state.invader_bullets[1].active);
+    try testing.expect(state.invader_bullets[2].active);
+    try testing.expect(!state.invader_bullets[3].active);
+}

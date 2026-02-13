@@ -41,4 +41,15 @@ process_invader_shooting calls raylib.getRandomValue directly. in order to suppo
 
 --- commit
 
-Now add test for invader bullets.
+Now add test for invaders shooting bullets.
+
+- Invaders do not fire every frame but at intervals (Invader.shootDelay).
+- When the game reaches time for shooting, each live Invader shoots with chance shootChance per cent.
+- In any frame, several Invaders may shoot.
+- When an invader shoots, the game tries to find an inactive invader bullet. If no such bullet exists, nothing further happens for that invader; this is not an error condition. If an inactive bullet is found, the bullet is activated and positioned at the bottom middle of the invader.
+
+--- commit
+
+Now for collision logic
+
+- When an invader bullet strikes a shield, the bullet becomes inactive and the shield health reduces, possibly causing destruction, analogously to player bullets.
