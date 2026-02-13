@@ -20,7 +20,7 @@ pub fn main() void {
     var state: GameState.GameState = undefined;
     var rng = RaylibRng{};
     GameState.init_game_state(&state);
-    game_loop: while (!rl.windowShouldClose()) {
+    while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.black);
@@ -33,7 +33,6 @@ pub fn main() void {
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                     state.game_won = false;
                     GameState.init_game_state(&state);
-                    continue :game_loop;
                 }
             },
             .lost => {
@@ -41,14 +40,13 @@ pub fn main() void {
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                     state.game_over = false;
                     GameState.init_game_state(&state);
-                    continue :game_loop;
                 }
             },
             .playing => {
                 const player_goes_right = rl.isKeyDown(rl.KeyboardKey.right);
                 const player_goes_left = rl.isKeyDown(rl.KeyboardKey.left);
                 const player_shoots = rl.isKeyPressed(rl.KeyboardKey.space);
-                GameState.process_game_frame(&state, &rng, player_goes_left, player_goes_right, player_shoots);
+                GameState.update_game_state(&state, &rng, player_goes_left, player_goes_right, player_shoots);
                 drawing.draw_game_state(&state);
             },
         }

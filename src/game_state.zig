@@ -244,11 +244,5 @@ pub fn GameStateModule(comptime RngSource: type) type {
                 return .playing;
             }
         }
-
-        pub fn process_game_frame(state: *GameState, rng: *RngSource, player_goes_left: bool, player_goes_right: bool, player_shoots: bool) void {
-            if (!state.game_won and !state.game_over) {
-                update_game_state(state, rng, player_goes_left, player_goes_right, player_shoots);
-            }
-        }
     };
 }
